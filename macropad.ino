@@ -5,11 +5,27 @@
 
 #include "HID-Project.h"
 
-#define cs   7
+#define cs   2
 #define dc   0
 #define rst  1
 
 TFT TFTscreen = TFT(cs, dc, rst);
+
+// CONNECTION
+
+/*
+  0 - DC
+  1 - RESET
+  2 - CS
+  6 - 1 KEYPAD
+  7 - 2 KEYPAD
+  8 - 3 KEYPAD
+  9 - 4 KEYPAD
+  10 - 5 KEYPAD
+  11 - 6 KEYPAD
+  12 - 7 KEYPAD
+  13 - 8 KEYPAD
+*/
 
 // KEYPAD VARIABLES
 
@@ -22,8 +38,8 @@ char hexaKeys[ROWS][COLS] = {
   {'7','8','9','C'},
   {'*','0','#','D'}
 };
-byte rowPins[ROWS] = {10, 9, 8, 6}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {5, 4, 3, 2}; //connect to the column pinouts of the keypad
+byte rowPins[ROWS] = {13, 12, 11, 10}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {9, 8, 7, 6}; //connect to the column pinouts of the keypad
 
 //initialize an instance of class NewKeypad
 Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); 
@@ -44,9 +60,15 @@ bool screenUpdated = false;
 bool help = false;
 
 // Help menu shortcuts
-String shortcuts[2][8] = {
-  {"1 - mute / unmute","* - help menu","4 - next layout", "5 - previous layout", "A - Spotify","B - Terminal","C - Code","D - Discord"},
-  {"# - Monkeytype","7 - volume up","8 - volume down"}
+// LAYOUT > PAGE > SHORTCUT
+String shortcuts[4][2][8] = {
+  {
+    {"1 - mute / unmute","* - help menu","4 - next layout", "5 - previous layout", "A - Spotify","B - Terminal","C - Code","D - Discord"},
+    {"# - Monkeytype","7 - volume up","8 - volume down"}
+  },
+  {
+    {"2 - text bold","A - # header","B - ## header", "C - ### header", "3 - export to HTML"}
+  }
 };
 // Current help screen layout
 int currentHelpIndex = 0;
@@ -56,7 +78,7 @@ int currentHelpIndex = 0;
 // Layouts variables
 int layoutIndex = 0;
 int layoutsLength = 4;
-String layoutNames[4] = {"General mode","Markdown mode","Undefined","Undefined"};
+String layoutNames[4] = {"General mode","Markdown mode","Undefined mode","Undefined mode"};
 // --------------------
 
 int findCenter(int length, int width = 6){
@@ -68,6 +90,37 @@ word ConvertRGB( byte R, byte G, byte B)
   return ( ((B & 0xF8) << 8) | ((G & 0xFC) << 3) | (R >> 3) );
 }
 
+// Color palette
+
+word iconColor = ConvertRGB(50, 255, 50);
+
+// Drawing icon
+
+// Unmuted icon
+// 'unmuted', 10x14px
+const unsigned char unmuteIcon [28] PROGMEM = {
+	0x0c, 0x00, 0x1e, 0x00, 0x3f, 0x00, 0x3f, 0x00, 0x3f, 0x00, 0x3f, 0x00, 0xbf, 0x40, 0xff, 0xc0, 
+	0x5e, 0x80, 0x21, 0x00, 0x1e, 0x00, 0x0c, 0x00, 0x0c, 0x00, 0x1e, 0x00
+};
+
+// 'muted', 10x14px
+const unsigned char muteIcon [28] PROGMEM = {
+	0x0c, 0x40, 0x1e, 0x80, 0x3e, 0x80, 0x3d, 0x00, 0x3a, 0x00, 0x3a, 0x00, 0xb5, 0x40, 0xeb, 0xc0, 
+	0x56, 0x80, 0x11, 0x00, 0x2e, 0x00, 0x4c, 0x00, 0x4c, 0x00, 0x9e, 0x00
+};
+
+// // ------------------------
+
+// // This is horrible, I know...
+void drawIcon(int x, int y, bool muted = false){
+  if(muted){
+    TFTscreen.drawBitmap(x, y, muteIcon, 10, 14, iconColor);
+  }
+  else{
+    TFTscreen.drawBitmap(x, y, unmuteIcon, 10, 14, iconColor);
+  }
+}
+
 // Drawing main menu
 void drawMainMenu(bool muted, bool help){
   TFTscreen.background(0, 0, 0);
@@ -76,6 +129,9 @@ void drawMainMenu(bool muted, bool help){
   if(help == false){
     // MUTED / UNMUTED PROMPT
     if(muted){
+      iconColor = ConvertRGB(255,50,50);
+      drawIcon(findCenter(1,10),30,true);
+
       TFTscreen.stroke(50, 50, 255);
       TFTscreen.setTextSize(2);
       TFTscreen.text("Muted",findCenter(5,12),50);
@@ -85,6 +141,9 @@ void drawMainMenu(bool muted, bool help){
       TFTscreen.text("Press 1 to unmute",findCenter(17),80);
     }
     else{
+      iconColor = ConvertRGB(50,255,50);
+      drawIcon(findCenter(1,10),30);
+
       TFTscreen.stroke(50, 255, 50);
       TFTscreen.setTextSize(2);
       TFTscreen.text("Unmuted",findCenter(7,12),50);
@@ -105,15 +164,15 @@ void drawMainMenu(bool muted, bool help){
   else{
     // HELP MENU TITLE
     TFTscreen.stroke(0, 150, 255);
-    TFTscreen.setTextSize(2);
-    TFTscreen.text("Help Menu",findCenter(9,12),10);
+    TFTscreen.setTextSize(1);
+    TFTscreen.text((layoutNames[layoutIndex]).c_str(),findCenter((layoutNames[layoutIndex]).length()),10);
 
     // HELP MENU ELEMENTS
     TFTscreen.stroke(255, 255, 255);
     TFTscreen.setTextSize(1);
 
     for(int i = 0; i < 8; i++){
-      TFTscreen.text((shortcuts[currentHelpIndex][i]).c_str(),findCenter((shortcuts[currentHelpIndex][i]).length()),30 + (i*10));
+      TFTscreen.text((shortcuts[layoutIndex][currentHelpIndex][i]).c_str(),findCenter((shortcuts[layoutIndex][currentHelpIndex][i]).length()),30 + (i*10));
     }
 
     // PAGE NUMBER
@@ -212,6 +271,7 @@ void loop(){
       else{
         layoutIndex++;
       }
+      currentHelpIndex = 0;
       screenUpdated = false;
       delay(100);
     }
@@ -222,6 +282,7 @@ void loop(){
       else{
         layoutIndex--;
       }
+      currentHelpIndex = 0;
       screenUpdated = false;
       delay(100);
     }
@@ -277,38 +338,30 @@ void loop(){
     // MARKDOWN MODE (for taking notes in markdown)
     else if(layoutIndex == 1){
       if(customKey == '2'){
-        Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('8');
-        delay(10);
-        Keyboard.releaseAll();
-        delay(10);
-        Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('8');
-        delay(10);
-        Keyboard.releaseAll();
+        Keyboard.print("**");
       }
       else if(customKey == 'A'){
-        Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('3');
-        delay(10);
-        Keyboard.releaseAll();
-        delay(10);
-        Keyboard.press(KEY_SPACE);
-        delay(10);
-        Keyboard.releaseAll();
+        Keyboard.print("# ");
       }
       else if(customKey == 'B'){
+        Keyboard.print("## ");
+      }
+      else if(customKey == 'C'){
+        Keyboard.print("### ");
+      }
+      else if(customKey == '3'){
+        Keyboard.press(KEY_LEFT_CTRL);
         Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('3');
+        Keyboard.write('P');
         delay(10);
         Keyboard.releaseAll();
         delay(10);
         Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('3');
         delay(10);
         Keyboard.releaseAll();
+        Keyboard.println("Run task");
         delay(10);
-        Keyboard.press(KEY_SPACE);
+        Keyboard.println("Convert to HTML");
         delay(10);
         Keyboard.releaseAll();
       }
