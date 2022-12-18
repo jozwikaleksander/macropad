@@ -11,7 +11,7 @@
 
 TFT TFTscreen = TFT(cs, dc, rst);
 
-// CONNECTION
+// PINS
 
 /*
   0 - DC
@@ -68,6 +68,9 @@ String shortcuts[4][2][8] = {
   },
   {
     {"2 - text bold","A - # header","B - ## header", "C - ### header", "3 - export to HTML"}
+  },
+  {
+    {"2 - sleep", "3 - shutdown"}
   }
 };
 // Current help screen layout
@@ -76,15 +79,17 @@ int currentHelpIndex = 0;
 // --------------------
 
 // Layouts variables
-int layoutIndex = 0;
+int layoutIndex = 3;
 int layoutsLength = 4;
-String layoutNames[4] = {"General mode","Markdown mode","Undefined mode","Undefined mode"};
+String layoutNames[4] = {"General mode","Markdown mode","Power management","Pomodoro mode"};
 // --------------------
 
+// Function for finding perfect x position to center an object
 int findCenter(int length, int width = 6){
   return int((160-(length*width))/2);
 }
 
+// Function for converting colors from RGB to bytes
 word ConvertRGB( byte R, byte G, byte B)
 {
   return ( ((B & 0xF8) << 8) | ((G & 0xFC) << 3) | (R >> 3) );
@@ -93,8 +98,27 @@ word ConvertRGB( byte R, byte G, byte B)
 // Color palette
 
 word iconColor = ConvertRGB(50, 255, 50);
+word backgroundColor = ConvertRGB(0,0,0);
+word whiteColor = ConvertRGB(255,255,255);
+word yellowColor = ConvertRGB(255,150,0);
+word magentaColor = ConvertRGB(155, 33, 255);
+word blueColor = ConvertRGB(255, 150, 0);
+word greenColor = ConvertRGB(0,0,0);
 
-// Drawing icon
+// Timer
+
+unsigned long startMillis = 0;
+unsigned long currentMillis = 0;
+
+int minutes = 0;
+int seconds = 0;
+
+bool timerStarted = false;
+
+// -----------------
+
+
+// Drawing icons
 
 // Unmuted icon
 // 'unmuted', 10x14px
@@ -103,15 +127,22 @@ const unsigned char unmuteIcon [28] PROGMEM = {
 	0x5e, 0x80, 0x21, 0x00, 0x1e, 0x00, 0x0c, 0x00, 0x0c, 0x00, 0x1e, 0x00
 };
 
+// Muted icon
 // 'muted', 10x14px
 const unsigned char muteIcon [28] PROGMEM = {
 	0x0c, 0x40, 0x1e, 0x80, 0x3e, 0x80, 0x3d, 0x00, 0x3a, 0x00, 0x3a, 0x00, 0xb5, 0x40, 0xeb, 0xc0, 
 	0x56, 0x80, 0x11, 0x00, 0x2e, 0x00, 0x4c, 0x00, 0x4c, 0x00, 0x9e, 0x00
 };
 
+// Clock icon
+// 'clock, 16x16px
+const unsigned char clockIcon [32] PROGMEM = {
+	0x00, 0x00, 0x03, 0xc0, 0x0c, 0x30, 0x10, 0x08, 0x20, 0x84, 0x20, 0x84, 0x40, 0x82, 0x40, 0x82, 
+	0x4f, 0x82, 0x40, 0x02, 0x20, 0x04, 0x20, 0x04, 0x10, 0x08, 0x0c, 0x30, 0x03, 0xc0, 0x00, 0x00
+};
+
 // // ------------------------
 
-// // This is horrible, I know...
 void drawIcon(int x, int y, bool muted = false){
   if(muted){
     TFTscreen.drawBitmap(x, y, muteIcon, 10, 14, iconColor);
@@ -122,11 +153,11 @@ void drawIcon(int x, int y, bool muted = false){
 }
 
 // Drawing main menu
-void drawMainMenu(bool muted, bool help){
+void drawMainMenu(bool muted, int currentScreen = 0){
   TFTscreen.background(0, 0, 0);
   TFTscreen.drawRect(5, 5, 150, 118,ConvertRGB(155, 33, 255));
 
-  if(help == false){
+  if(currentScreen == 0){
     // MUTED / UNMUTED PROMPT
     if(muted){
       iconColor = ConvertRGB(255,50,50);
@@ -161,7 +192,7 @@ void drawMainMenu(bool muted, bool help){
     TFTscreen.stroke(255, 150, 0);
     TFTscreen.text((layoutNames[layoutIndex]).c_str(),findCenter(layoutNames[layoutIndex].length()),100);
   }
-  else{
+  else if(currentScreen == 1){
     // HELP MENU TITLE
     TFTscreen.stroke(0, 150, 255);
     TFTscreen.setTextSize(1);
@@ -178,6 +209,30 @@ void drawMainMenu(bool muted, bool help){
     // PAGE NUMBER
     TFTscreen.stroke(0, 150, 255);
     TFTscreen.text(("Page "+String(currentHelpIndex+1)+" of 2").c_str(),findCenter(11),110);
+  }
+  else if(currentScreen == 2){
+    TFTscreen.drawBitmap(findCenter(14,1), 10, clockIcon, 16, 16, magentaColor);
+    TFTscreen.stroke(255, 33, 155);
+    TFTscreen.setTextSize(1);
+    if(timerStarted){
+      TFTscreen.text("Time left",findCenter(9),30);
+    }
+    else{
+      TFTscreen.text("Press 1 to start",findCenter(16),30);
+    }
+    TFTscreen.stroke(255, 33, 155);
+    TFTscreen.setTextSize(2);
+    TFTscreen.text((String(25 - minutes)+" min").c_str(),findCenter(5,12),50);
+    TFTscreen.drawRect(findCenter(1,100),75,100,15,magentaColor);
+
+    Serial.println((2.0/25.0)*94.0);
+
+    TFTscreen.fillRect(findCenter(1,100)+3,78,int((minutes/25.0)*94.0),9,yellowColor);
+
+    // LAYOUT NAME
+    TFTscreen.stroke(255, 150, 0);
+    TFTscreen.setTextSize(1);
+    TFTscreen.text((layoutNames[layoutIndex]).c_str(),findCenter(layoutNames[layoutIndex].length()),100);
   }
 }
 
@@ -205,12 +260,12 @@ void setup(){
 void loop(){
   char customKey = customKeypad.getKey();
 
-  // If help menu activated
+  // If help menu is activated
   if(help){
     // If screen needs to be updated
     if(screenUpdated == false){
       Serial.println("Get help");
-      drawMainMenu(muted,help);
+      drawMainMenu(muted,1);
       screenUpdated = true;
     }
     // HELP MENU BINDS
@@ -241,7 +296,7 @@ void loop(){
     
     if(screenUpdated == false){
       Serial.println("Screen is getting updated");
-      drawMainMenu(muted,help);
+      drawMainMenu(muted,0);
       screenUpdated = true;
     }
   }
@@ -250,16 +305,36 @@ void loop(){
     digitalWrite(13,LOW);
 
     if(screenUpdated == false){
-      drawMainMenu(muted,help);
-      screenUpdated = true;
+      if(layoutIndex == 3){
+        Serial.println("Update screen");
+        drawMainMenu(muted,2);
+        screenUpdated = true;
+      }
+      else{
+        drawMainMenu(muted,0);
+        screenUpdated = true;
+      }
     }
   }
-  // Help menu binding
+  // Help menu binding (always available)
   if(customKey == '*'){
       help = !help;
       screenUpdated=false;
       delay(100);
   }
+  if(timerStarted){
+    seconds = int((millis() - startMillis) / 1000.0);
+
+    Serial.println(seconds);
+
+    if(seconds % 60 == 0 && seconds > 0){
+      minutes++;
+      startMillis = millis();
+      seconds = 0;
+      screenUpdated=false;
+    }
+  }
+
   // If not in help menu; Main bindings
   if(!help){
 
@@ -289,7 +364,7 @@ void loop(){
     // ----------------------
 
     // NOT LAYOUT DEPENDENT KEYBINDINGS 
-    if (customKey == '1'){ // Muting
+    if (customKey == '1' && layoutIndex != 3){ // Muting
         muted = !muted;
         screenUpdated = false;
         Keyboard.press(KEY_LEFT_CTRL);
@@ -364,6 +439,32 @@ void loop(){
         Keyboard.println("Convert to HTML");
         delay(10);
         Keyboard.releaseAll();
+      }
+    }
+    else if(layoutIndex == 2){
+      if(customKey == '2'){
+        Keyboard.press(KEY_LEFT_CTRL);
+        Keyboard.press(KEY_LEFT_SHIFT);
+        Keyboard.write('.');
+        delay(10);
+        Keyboard.releaseAll();
+      }
+      else if(customKey == '3'){
+        Keyboard.press(KEY_LEFT_CTRL);
+        Keyboard.press(KEY_LEFT_SHIFT);
+        Keyboard.write('/');
+        delay(10);
+        Keyboard.releaseAll();
+      }
+    }
+    else if(layoutIndex == 3){
+      if(customKey == '1'){
+        delay(10);
+        timerStarted = !timerStarted;
+        startMillis = millis();
+        Serial.println("Timer started");
+        drawMainMenu(muted,2);
+        delay(10);
       }
     }
   }
