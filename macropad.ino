@@ -52,6 +52,8 @@ bool muted = false;
 // After pressing mute button color needs to be changed. This variable insures that it will by only changed on time.
 bool screenUpdated = false;
 
+bool notificationActive = false;
+
 // --------------------
 
 // HELP MENU VARIABLES
@@ -71,6 +73,9 @@ String shortcuts[4][2][8] = {
   },
   {
     {"2 - sleep", "3 - shutdown"}
+  },
+  {
+    {"1 - normal session (25 min)", "2 - break time (5 min)"}
   }
 };
 // Current help screen layout
@@ -79,7 +84,7 @@ int currentHelpIndex = 0;
 // --------------------
 
 // Layouts variables
-int layoutIndex = 3;
+int layoutIndex = 0;
 int layoutsLength = 4;
 String layoutNames[4] = {"General mode","Markdown mode","Power management","Pomodoro mode"};
 // --------------------
@@ -107,6 +112,9 @@ word greenColor = ConvertRGB(0,0,0);
 
 // Timer
 
+int lessonTime = 25;
+int breakTime = 1;
+int currentSessionTime = lessonTime;
 unsigned long startMillis = 0;
 unsigned long currentMillis = 0;
 
@@ -118,7 +126,7 @@ bool timerStarted = false;
 // -----------------
 
 
-// Drawing icons
+// ICONS
 
 // Unmuted icon
 // 'unmuted', 10x14px
@@ -140,9 +148,9 @@ const unsigned char clockIcon [32] PROGMEM = {
 	0x00, 0x00, 0x03, 0xc0, 0x0c, 0x30, 0x10, 0x08, 0x20, 0x84, 0x20, 0x84, 0x40, 0x82, 0x40, 0x82, 
 	0x4f, 0x82, 0x40, 0x02, 0x20, 0x04, 0x20, 0x04, 0x10, 0x08, 0x0c, 0x30, 0x03, 0xc0, 0x00, 0x00
 };
+// ------------------------
 
-// // ------------------------
-
+// Function for drawing microphone icons
 void drawIcon(int x, int y, bool muted = false){
   if(muted){
     TFTscreen.drawBitmap(x, y, muteIcon, 10, 14, iconColor);
@@ -151,11 +159,12 @@ void drawIcon(int x, int y, bool muted = false){
     TFTscreen.drawBitmap(x, y, unmuteIcon, 10, 14, iconColor);
   }
 }
+// ------------------------
 
 // Drawing main menu
 void drawMainMenu(bool muted, int currentScreen = 0){
   TFTscreen.background(0, 0, 0);
-  TFTscreen.drawRect(5, 5, 150, 118,ConvertRGB(155, 33, 255));
+  TFTscreen.drawRect(5, 5, 150, 118,magentaColor);
 
   if(currentScreen == 0){
     // MUTED / UNMUTED PROMPT
@@ -222,12 +231,12 @@ void drawMainMenu(bool muted, int currentScreen = 0){
     }
     TFTscreen.stroke(255, 33, 155);
     TFTscreen.setTextSize(2);
-    TFTscreen.text((String(25 - minutes)+" min").c_str(),findCenter(5,12),50);
+    TFTscreen.text((String(currentSessionTime - minutes)+" min").c_str(),findCenter(5,12),50);
     TFTscreen.drawRect(findCenter(1,100),75,100,15,magentaColor);
 
     Serial.println((2.0/25.0)*94.0);
 
-    TFTscreen.fillRect(findCenter(1,100)+3,78,int((minutes/25.0)*94.0),9,yellowColor);
+    TFTscreen.fillRect(findCenter(1,100)+3,78,int((float(minutes)/float(currentSessionTime))*94.0),9,yellowColor);
 
     // LAYOUT NAME
     TFTscreen.stroke(255, 150, 0);
@@ -260,8 +269,20 @@ void setup(){
 void loop(){
   char customKey = customKeypad.getKey();
 
+  if(Serial.available()){
+    String input = Serial.readStringUntil('\n');
+    
+    sendNotification(input);
+  }
+
+  // If notification is currently displayed
+  if(notificationActive && customKey == '1'){
+    screenUpdated = false;
+    notificationActive = false;
+    delay(100);
+  }
   // If help menu is activated
-  if(help){
+  else if(help){
     // If screen needs to be updated
     if(screenUpdated == false){
       Serial.println("Get help");
@@ -290,23 +311,10 @@ void loop(){
       screenUpdated = false;
     }
   }
-  // If muted
-  else if(muted){
-    digitalWrite(13,HIGH);
-    
-    if(screenUpdated == false){
-      Serial.println("Screen is getting updated");
-      drawMainMenu(muted,0);
-      screenUpdated = true;
-    }
-  }
-  // If not muted and not in help menu
   else{
-    digitalWrite(13,LOW);
 
     if(screenUpdated == false){
       if(layoutIndex == 3){
-        Serial.println("Update screen");
         drawMainMenu(muted,2);
         screenUpdated = true;
       }
@@ -315,28 +323,6 @@ void loop(){
         screenUpdated = true;
       }
     }
-  }
-  // Help menu binding (always available)
-  if(customKey == '*'){
-      help = !help;
-      screenUpdated=false;
-      delay(100);
-  }
-  if(timerStarted){
-    seconds = int((millis() - startMillis) / 1000.0);
-
-    Serial.println(seconds);
-
-    if(seconds % 60 == 0 && seconds > 0){
-      minutes++;
-      startMillis = millis();
-      seconds = 0;
-      screenUpdated=false;
-    }
-  }
-
-  // If not in help menu; Main bindings
-  if(!help){
 
     // Changing layouts
     if(customKey == '5'){
@@ -406,7 +392,6 @@ void loop(){
       }
       else if(customKey == '9'){
         Consumer.write(MEDIA_PLAY_PAUSE);
-        drawMainMenu(muted,help);
         delay(100);
       }
     }
@@ -461,11 +446,79 @@ void loop(){
       if(customKey == '1'){
         delay(10);
         timerStarted = !timerStarted;
+        currentSessionTime = lessonTime;
+        minutes = 0;
+        seconds = 0;
         startMillis = millis();
-        Serial.println("Timer started");
+        drawMainMenu(muted,2);
+        delay(10);
+      }
+      else if(customKey == '2'){
+        delay(10);
+        timerStarted = !timerStarted;
+        currentSessionTime = breakTime;
+        minutes = 0;
+        seconds = 0;
+        startMillis = millis();
         drawMainMenu(muted,2);
         delay(10);
       }
     }
   }
+  // Help menu binding (always available)
+  if(customKey == '*'){
+      help = !help;
+      screenUpdated=false;
+      delay(100);
+  }
+  // Pomodoro timer
+  if(timerStarted){
+    seconds = int((millis() - startMillis) / 1000.0);
+
+    if(seconds % 60 == 0 && seconds > 0){
+      minutes++;
+      if(minutes >= currentSessionTime){
+        if(currentSessionTime == lessonTime){
+          currentSessionTime = breakTime;
+        }
+        else{
+          currentSessionTime = lessonTime;
+        }
+        timerStarted = false;
+        minutes = 0;
+
+        sendNotification("Times up!");
+      }
+      else{
+        startMillis = millis();
+        seconds = 0;
+        screenUpdated=false;
+      }
+    }
+  }
+}
+void sendNotification(String text){
+
+  if(notificationActive == false){
+    displayNotification(text);
+    notificationActive = true;
+    delay(500);
+  }
+}
+
+void displayNotification(String text){
+  // Max amount of character in one line is 22
+  TFTscreen.background(0, 0, 0);
+  TFTscreen.drawRect(5, 5, 150, 118,magentaColor);
+
+  TFTscreen.stroke(0, 150, 255);
+  TFTscreen.setTextSize(1);
+
+  TFTscreen.text("Message",findCenter(7),10);
+
+  TFTscreen.text(text.c_str(), findCenter(text.length()), 20);
+
+  TFTscreen.stroke(255, 150, 0);
+  TFTscreen.setTextSize(1);
+  TFTscreen.text("Press 1 to close",findCenter(16),103);
 }
