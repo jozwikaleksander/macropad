@@ -113,14 +113,13 @@ word ConvertRGB( byte R, byte G, byte B)
 
 // Color palette
 
-word iconColor = ConvertRGB(50, 255, 50);
-word backgroundColor = ConvertRGB(30,30,30);
+word backgroundColor = ConvertRGB(42, 42, 56);
 word whiteColor = ConvertRGB(255,255,255);
 word yellowColor = ConvertRGB(255,150,0);
-word magentaColor = ConvertRGB(155, 33, 255);
-word blueColor = ConvertRGB(86, 181, 207);
-word greenColor = ConvertRGB(50,255,50);
-word redColor = ConvertRGB(255,50,50);
+word magentaColor = ConvertRGB(116, 73, 132);
+word blueColor = ConvertRGB(100, 157, 247);
+word greenColor = ConvertRGB(61, 146, 111);
+word redColor = ConvertRGB(212, 87, 101);
 
 // Timer
 
@@ -136,7 +135,26 @@ int seconds = 0;
 bool timerStarted = false;
 
 // -----------------
+// CORNERS
 
+const unsigned char left_down_corner [] PROGMEM = {
+	0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x40, 0x00, 0x40, 0x00, 0x40, 0x00, 0x20, 0x00, 0x20, 0x00, 
+	0x20, 0x00, 0x10, 0x00, 0x08, 0x00, 0x06, 0x00, 0x01, 0xe0, 0x00, 0x1c
+};
+const unsigned char left_top_corner [] PROGMEM = {
+	0x00, 0x1c, 0x00, 0xe0, 0x07, 0x00, 0x08, 0x00, 0x10, 0x00, 0x20, 0x00, 0x20, 0x00, 0x40, 0x00, 
+	0x40, 0x00, 0x40, 0x00, 0x40, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00
+};
+const unsigned char right_top_corner [] PROGMEM = {
+	0xe0, 0x00, 0x1c, 0x00, 0x03, 0x80, 0x00, 0x40, 0x00, 0x20, 0x00, 0x10, 0x00, 0x10, 0x00, 0x08, 
+	0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x04, 0x00, 0x04, 0x00, 0x04
+};
+const unsigned char right_down_corner [] PROGMEM = {
+	0x00, 0x04, 0x00, 0x04, 0x00, 0x04, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x10, 
+	0x00, 0x10, 0x00, 0x20, 0x00, 0x40, 0x03, 0x80, 0x1c, 0x00, 0xe0, 0x00
+};
+
+// -----------------
 
 // ICONS
 
@@ -178,6 +196,8 @@ void drawMainMenu(bool muted, int currentScreen = 0){
   tft.fillScreen(backgroundColor);
   tft.drawRect(5, 5, 150, 118,magentaColor);
 
+  drawCorners();
+
   if(currentScreen == 0){
     // MUTED / UNMUTED PROMPT
     if(muted){
@@ -188,7 +208,7 @@ void drawMainMenu(bool muted, int currentScreen = 0){
       tft.setCursor(findCenter(5,12), 50);
       tft.print("Muted");
 
-      tft.setTextColor(whiteColor);
+      tft.setTextColor(yellowColor);
       tft.setTextSize(1);
       tft.setCursor(findCenter(17), 80);
       tft.print("Press 1 to unmute");
@@ -201,7 +221,7 @@ void drawMainMenu(bool muted, int currentScreen = 0){
       tft.setCursor(findCenter(7,12), 50);
       tft.print("Unmuted");
 
-      tft.setTextColor(whiteColor);
+      tft.setTextColor(yellowColor);
       tft.setTextSize(1);
       tft.setCursor(findCenter(15), 80);
       tft.print("Press 1 to mute");
@@ -228,9 +248,23 @@ void drawMainMenu(bool muted, int currentScreen = 0){
     tft.setTextColor(whiteColor);
     tft.setTextSize(1);
 
+    int offset = 0;
+
     for(int i = 0; i < 8; i++){
-      tft.setCursor(findCenter((shortcuts[layoutIndex][currentHelpIndex][i]).length()),30 + (i*10));
-      tft.print((shortcuts[layoutIndex][currentHelpIndex][i]).c_str());
+
+      tft.setCursor(10,30 + (i*10)+offset);
+
+      char shortcut[shortcuts[layoutIndex][currentHelpIndex][i].length() + 1];
+      strcpy(shortcut, shortcuts[layoutIndex][currentHelpIndex][i].c_str());
+
+      if(strlen(shortcut) > 22){
+        wrapText(shortcut,13,30);
+        offset = 10;
+      }
+      else{
+        tft.print(shortcut);
+        offset = 0;        
+      }
     }
 
     // PAGE NUMBER
@@ -239,8 +273,8 @@ void drawMainMenu(bool muted, int currentScreen = 0){
     tft.print(("Page "+String(currentHelpIndex+1)+" of 2").c_str());
   }
   else if(currentScreen == 2){
-    tft.drawBitmap(findCenter(14,1), 10, clockIcon, 16, 16, redColor);
-    tft.setTextColor(yellowColor);
+    tft.drawBitmap(findCenter(14,1), 10, clockIcon, 16, 16, greenColor);
+    tft.setTextColor(redColor);
     tft.setTextSize(1);
     if(timerStarted){
       tft.setCursor(findCenter(9),30);
@@ -250,7 +284,7 @@ void drawMainMenu(bool muted, int currentScreen = 0){
       tft.setCursor(findCenter(16),30);
       tft.print("Press 1 to start");
     }
-    tft.setTextColor(magentaColor);
+    tft.setTextColor(yellowColor);
     tft.setTextSize(2);
     tft.setCursor(findCenter(5,12),50);
     tft.print((String(currentSessionTime - minutes)+" min").c_str());
@@ -287,7 +321,7 @@ void setup(){
   tft.initR(INITR_GREENTAB);
   tft.setRotation(1);
   tft.fillScreen(ST7735_BLACK);
-  tft.setTextWrap(true);
+  tft.setTextWrap(false);
 
   Consumer.begin();
 }
@@ -544,14 +578,46 @@ void displayNotification(char text[]){
 
   tft.setCursor(findCenter(7),10);
   tft.print("Message");
+
+  tft.setTextWrap(false);
+
+  tft.setTextColor(whiteColor);
   
-  Serial.println(strlen(text));
-  tft.setCursor(findCenter(strlen(text)), 20);
-  tft.print(text);
+  if(strlen(text) > 22){
+    wrapText(text,13,30);
+  }
+  else{
+    tft.setCursor(13, 20);
+    tft.print(text);
+  }
   
 
   tft.setTextColor(yellowColor);
   tft.setTextSize(1);
   tft.setCursor(findCenter(16),103);
   tft.print("Press 1 to close");
+}
+
+void wrapText(char text[],int x,int y){
+  tft.setCursor(x,y);
+
+  int j = 0;
+  String line = "";
+  for(int i = 0; i < strlen(text);i++){
+    if((i+1) % 22 != 0){
+      tft.print(text[i]);
+    }
+    else{
+      tft.println("");
+      tft.setCursor(x,tft.getCursorY()+2);
+      tft.print(text[i]);
+    }
+  }
+}
+
+void drawCorners(){
+  tft.drawBitmap(5,5,left_top_corner,14,14,magentaColor);
+  tft.drawBitmap(141,5,right_top_corner,14,14,magentaColor);
+  tft.drawBitmap(5,109,left_down_corner,14,14,magentaColor);
+  tft.drawBitmap(141,109,right_down_corner,14,14,magentaColor);
 }
