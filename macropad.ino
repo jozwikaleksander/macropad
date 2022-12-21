@@ -1,7 +1,12 @@
+#include <Adafruit_GFX.h>
+
+#include <Adafruit_ST7735.h>
+
+// TODO: Add displayHeader, displayText function | 18/12/22
+
 #include <Keypad.h>
 
-#include <TFT.h>
-#include <SPI.h>
+#include "SPI.h"
 
 #include "HID-Project.h"
 
@@ -9,7 +14,9 @@
 #define dc   0
 #define rst  1
 
-TFT TFTscreen = TFT(cs, dc, rst);
+#include <SPI.h>
+
+Adafruit_ST7735 tft = Adafruit_ST7735(cs, dc, rst);
 
 // PINS
 
@@ -55,6 +62,10 @@ bool screenUpdated = false;
 bool notificationActive = false;
 
 // --------------------
+
+// SCREEN NOTIFICATION SETTINGS
+int maxLineLength = 22;
+
 
 // HELP MENU VARIABLES
 
@@ -103,17 +114,18 @@ word ConvertRGB( byte R, byte G, byte B)
 // Color palette
 
 word iconColor = ConvertRGB(50, 255, 50);
-word backgroundColor = ConvertRGB(0,0,0);
+word backgroundColor = ConvertRGB(30,30,30);
 word whiteColor = ConvertRGB(255,255,255);
 word yellowColor = ConvertRGB(255,150,0);
 word magentaColor = ConvertRGB(155, 33, 255);
-word blueColor = ConvertRGB(255, 150, 0);
-word greenColor = ConvertRGB(0,0,0);
+word blueColor = ConvertRGB(86, 181, 207);
+word greenColor = ConvertRGB(50,255,50);
+word redColor = ConvertRGB(255,50,50);
 
 // Timer
 
 int lessonTime = 25;
-int breakTime = 1;
+int breakTime = 5;
 int currentSessionTime = lessonTime;
 unsigned long startMillis = 0;
 unsigned long currentMillis = 0;
@@ -153,95 +165,106 @@ const unsigned char clockIcon [32] PROGMEM = {
 // Function for drawing microphone icons
 void drawIcon(int x, int y, bool muted = false){
   if(muted){
-    TFTscreen.drawBitmap(x, y, muteIcon, 10, 14, iconColor);
+    tft.drawBitmap(x, y, muteIcon, 10, 14, redColor);
   }
   else{
-    TFTscreen.drawBitmap(x, y, unmuteIcon, 10, 14, iconColor);
+    tft.drawBitmap(x, y, unmuteIcon, 10, 14, greenColor);
   }
 }
 // ------------------------
 
 // Drawing main menu
 void drawMainMenu(bool muted, int currentScreen = 0){
-  TFTscreen.background(0, 0, 0);
-  TFTscreen.drawRect(5, 5, 150, 118,magentaColor);
+  tft.fillScreen(backgroundColor);
+  tft.drawRect(5, 5, 150, 118,magentaColor);
 
   if(currentScreen == 0){
     // MUTED / UNMUTED PROMPT
     if(muted){
-      iconColor = ConvertRGB(255,50,50);
       drawIcon(findCenter(1,10),30,true);
 
-      TFTscreen.stroke(50, 50, 255);
-      TFTscreen.setTextSize(2);
-      TFTscreen.text("Muted",findCenter(5,12),50);
+      tft.setTextColor(whiteColor);
+      tft.setTextSize(2);
+      tft.setCursor(findCenter(5,12), 50);
+      tft.print("Muted");
 
-      TFTscreen.stroke(255, 255, 255);
-      TFTscreen.setTextSize(1);
-      TFTscreen.text("Press 1 to unmute",findCenter(17),80);
+      tft.setTextColor(whiteColor);
+      tft.setTextSize(1);
+      tft.setCursor(findCenter(17), 80);
+      tft.print("Press 1 to unmute");
     }
     else{
-      iconColor = ConvertRGB(50,255,50);
       drawIcon(findCenter(1,10),30);
 
-      TFTscreen.stroke(50, 255, 50);
-      TFTscreen.setTextSize(2);
-      TFTscreen.text("Unmuted",findCenter(7,12),50);
+      tft.setTextColor(whiteColor);
+      tft.setTextSize(2);
+      tft.setCursor(findCenter(7,12), 50);
+      tft.print("Unmuted");
 
-      TFTscreen.stroke(255, 255, 255);
-      TFTscreen.setTextSize(1);
-      TFTscreen.text("Press 1 to mute",findCenter(15),80);
+      tft.setTextColor(whiteColor);
+      tft.setTextSize(1);
+      tft.setCursor(findCenter(15), 80);
+      tft.print("Press 1 to mute");
     }
 
     // HELP MENU
-    TFTscreen.stroke(0, 150, 255);
-    TFTscreen.text("Press * for help",findCenter(16),20);
+    tft.setTextColor(yellowColor);
+    tft.setCursor(findCenter(16), 20);
+    tft.print("Press * for help");
 
     // LAYOUT NAME
-    TFTscreen.stroke(255, 150, 0);
-    TFTscreen.text((layoutNames[layoutIndex]).c_str(),findCenter(layoutNames[layoutIndex].length()),100);
+    tft.setTextColor(blueColor);
+    tft.setCursor(findCenter(layoutNames[layoutIndex].length()),100);
+    tft.print((layoutNames[layoutIndex]).c_str());
   }
   else if(currentScreen == 1){
     // HELP MENU TITLE
-    TFTscreen.stroke(0, 150, 255);
-    TFTscreen.setTextSize(1);
-    TFTscreen.text((layoutNames[layoutIndex]).c_str(),findCenter((layoutNames[layoutIndex]).length()),10);
+    tft.setTextColor(yellowColor);
+    tft.setTextSize(1);
+    tft.setCursor(findCenter((layoutNames[layoutIndex]).length()),10);
+    tft.print((layoutNames[layoutIndex]).c_str());
 
     // HELP MENU ELEMENTS
-    TFTscreen.stroke(255, 255, 255);
-    TFTscreen.setTextSize(1);
+    tft.setTextColor(whiteColor);
+    tft.setTextSize(1);
 
     for(int i = 0; i < 8; i++){
-      TFTscreen.text((shortcuts[layoutIndex][currentHelpIndex][i]).c_str(),findCenter((shortcuts[layoutIndex][currentHelpIndex][i]).length()),30 + (i*10));
+      tft.setCursor(findCenter((shortcuts[layoutIndex][currentHelpIndex][i]).length()),30 + (i*10));
+      tft.print((shortcuts[layoutIndex][currentHelpIndex][i]).c_str());
     }
 
     // PAGE NUMBER
-    TFTscreen.stroke(0, 150, 255);
-    TFTscreen.text(("Page "+String(currentHelpIndex+1)+" of 2").c_str(),findCenter(11),110);
+    tft.setTextColor(blueColor);
+    tft.setCursor(findCenter(11),110);
+    tft.print(("Page "+String(currentHelpIndex+1)+" of 2").c_str());
   }
   else if(currentScreen == 2){
-    TFTscreen.drawBitmap(findCenter(14,1), 10, clockIcon, 16, 16, magentaColor);
-    TFTscreen.stroke(255, 33, 155);
-    TFTscreen.setTextSize(1);
+    tft.drawBitmap(findCenter(14,1), 10, clockIcon, 16, 16, redColor);
+    tft.setTextColor(yellowColor);
+    tft.setTextSize(1);
     if(timerStarted){
-      TFTscreen.text("Time left",findCenter(9),30);
+      tft.setCursor(findCenter(9),30);
+      tft.print("Time left");
     }
     else{
-      TFTscreen.text("Press 1 to start",findCenter(16),30);
+      tft.setCursor(findCenter(16),30);
+      tft.print("Press 1 to start");
     }
-    TFTscreen.stroke(255, 33, 155);
-    TFTscreen.setTextSize(2);
-    TFTscreen.text((String(currentSessionTime - minutes)+" min").c_str(),findCenter(5,12),50);
-    TFTscreen.drawRect(findCenter(1,100),75,100,15,magentaColor);
+    tft.setTextColor(magentaColor);
+    tft.setTextSize(2);
+    tft.setCursor(findCenter(5,12),50);
+    tft.print((String(currentSessionTime - minutes)+" min").c_str());
+    tft.drawRect(findCenter(1,100),75,100,15,magentaColor);
 
     Serial.println((2.0/25.0)*94.0);
 
-    TFTscreen.fillRect(findCenter(1,100)+3,78,int((float(minutes)/float(currentSessionTime))*94.0),9,yellowColor);
+    tft.fillRect(findCenter(1,100)+3,78,int((float(minutes)/float(currentSessionTime))*94.0),9,yellowColor);
 
     // LAYOUT NAME
-    TFTscreen.stroke(255, 150, 0);
-    TFTscreen.setTextSize(1);
-    TFTscreen.text((layoutNames[layoutIndex]).c_str(),findCenter(layoutNames[layoutIndex].length()),100);
+    tft.setTextColor(blueColor);
+    tft.setTextSize(1);
+    tft.setCursor(findCenter(layoutNames[layoutIndex].length()),100);
+    tft.print((layoutNames[layoutIndex]).c_str());
   }
 }
 
@@ -261,8 +284,11 @@ void launchFromStartMenu(String program){
 void setup(){
   Serial.begin(9600);
   Keyboard.begin();
-  pinMode(13,OUTPUT);
-  TFTscreen.begin();
+  tft.initR(INITR_GREENTAB);
+  tft.setRotation(1);
+  tft.fillScreen(ST7735_BLACK);
+  tft.setTextWrap(true);
+
   Consumer.begin();
 }
   
@@ -270,7 +296,9 @@ void loop(){
   char customKey = customKeypad.getKey();
 
   if(Serial.available()){
-    String input = Serial.readStringUntil('\n');
+    String inputStr = Serial.readStringUntil('\n');
+    char input[inputStr.length()+1];
+    inputStr.toCharArray(input, inputStr.length()+1);
     
     sendNotification(input);
   }
@@ -497,7 +525,7 @@ void loop(){
     }
   }
 }
-void sendNotification(String text){
+void sendNotification(char text[]){
 
   if(notificationActive == false){
     displayNotification(text);
@@ -506,19 +534,24 @@ void sendNotification(String text){
   }
 }
 
-void displayNotification(String text){
+void displayNotification(char text[]){
   // Max amount of character in one line is 22
-  TFTscreen.background(0, 0, 0);
-  TFTscreen.drawRect(5, 5, 150, 118,magentaColor);
+  tft.fillScreen(backgroundColor);
+  tft.drawRect(5, 5, 150, 118,magentaColor);
 
-  TFTscreen.stroke(0, 150, 255);
-  TFTscreen.setTextSize(1);
+  tft.setTextColor(yellowColor);
+  tft.setTextSize(1);
 
-  TFTscreen.text("Message",findCenter(7),10);
+  tft.setCursor(findCenter(7),10);
+  tft.print("Message");
+  
+  Serial.println(strlen(text));
+  tft.setCursor(findCenter(strlen(text)), 20);
+  tft.print(text);
+  
 
-  TFTscreen.text(text.c_str(), findCenter(text.length()), 20);
-
-  TFTscreen.stroke(255, 150, 0);
-  TFTscreen.setTextSize(1);
-  TFTscreen.text("Press 1 to close",findCenter(16),103);
+  tft.setTextColor(yellowColor);
+  tft.setTextSize(1);
+  tft.setCursor(findCenter(16),103);
+  tft.print("Press 1 to close");
 }
