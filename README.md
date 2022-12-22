@@ -1,6 +1,6 @@
 # 🕹 Macropad
 
-![UI](docs/general_mode.jpg)
+![UI](docs/power_management.jpg)
 
 Basic macropad made using Arduino (Leonardo). It's work in progress, so many things are hardcoded.
 
