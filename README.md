@@ -21,5 +21,9 @@ Basic macropad made using Arduino Leonardo.
 - 4x4 matrix membrane keypad
 - 1.8" TFT display
 
+## 📸 Screenshots
+
+![UI Screenshots](docs/ui.png)
+
 ## 👤 Credits
 Project was made by Aleksander Jóźwik ([@jozwikaleksander](https://github.com/jozwikaleksander)).
