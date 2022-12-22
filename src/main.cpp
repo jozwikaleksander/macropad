@@ -1,20 +1,16 @@
+#include <Arduino.h>
+
 #include <Adafruit_GFX.h>
-
 #include <Adafruit_ST7735.h>
-
-// TODO: Add displayHeader, displayText function | 18/12/22
-
-#include <Keypad.h>
 
 #include "SPI.h"
 
+#include <Keypad.h>
 #include "HID-Project.h"
 
 #define cs   2
 #define dc   0
 #define rst  1
-
-#include <SPI.h>
 
 Adafruit_ST7735 tft = Adafruit_ST7735(cs, dc, rst);
 
@@ -137,19 +133,19 @@ bool timerStarted = false;
 // -----------------
 // CORNERS
 
-const unsigned char left_down_corner [] PROGMEM = {
+const unsigned char leftDownCorner [] PROGMEM = {
 	0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x40, 0x00, 0x40, 0x00, 0x40, 0x00, 0x20, 0x00, 0x20, 0x00, 
 	0x20, 0x00, 0x10, 0x00, 0x08, 0x00, 0x06, 0x00, 0x01, 0xe0, 0x00, 0x1c
 };
-const unsigned char left_top_corner [] PROGMEM = {
+const unsigned char leftTopCorner [] PROGMEM = {
 	0x00, 0x1c, 0x00, 0xe0, 0x07, 0x00, 0x08, 0x00, 0x10, 0x00, 0x20, 0x00, 0x20, 0x00, 0x40, 0x00, 
 	0x40, 0x00, 0x40, 0x00, 0x40, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00
 };
-const unsigned char right_top_corner [] PROGMEM = {
+const unsigned char rightTopCorner [] PROGMEM = {
 	0xe0, 0x00, 0x1c, 0x00, 0x03, 0x80, 0x00, 0x40, 0x00, 0x20, 0x00, 0x10, 0x00, 0x10, 0x00, 0x08, 
 	0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x04, 0x00, 0x04, 0x00, 0x04
 };
-const unsigned char right_down_corner [] PROGMEM = {
+const unsigned char rightDownCorner [] PROGMEM = {
 	0x00, 0x04, 0x00, 0x04, 0x00, 0x04, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x08, 0x00, 0x10, 
 	0x00, 0x10, 0x00, 0x20, 0x00, 0x40, 0x03, 0x80, 0x1c, 0x00, 0xe0, 0x00
 };
@@ -190,6 +186,72 @@ void drawIcon(int x, int y, bool muted = false){
   }
 }
 // ------------------------
+
+// Function for wrapping text
+void wrapText(char text[],int x,int y){
+  tft.setCursor(x,y);
+
+  String line = "";
+  for(int i = 0; i < strlen(text);i++){
+    if((i+1) % 22 != 0){
+      tft.print(text[i]);
+    }
+    else{
+      tft.println("");
+      tft.setCursor(x,tft.getCursorY()+2);
+      tft.print(text[i]);
+    }
+  }
+}
+
+// Displaying notification
+void displayNotification(char text[]){
+  // Max amount of character in one line is 22
+  tft.fillScreen(backgroundColor);
+  tft.drawRect(5, 5, 150, 118,magentaColor);
+
+  tft.setTextColor(yellowColor);
+  tft.setTextSize(1);
+
+  tft.setCursor(findCenter(7),10);
+  tft.print("Message");
+
+  tft.setTextWrap(false);
+
+  tft.setTextColor(whiteColor);
+  
+  if(strlen(text) > 22){
+    wrapText(text,13,30);
+  }
+  else{
+    tft.setCursor(13, 20);
+    tft.print(text);
+  }
+  
+
+  tft.setTextColor(yellowColor);
+  tft.setTextSize(1);
+  tft.setCursor(findCenter(16),103);
+  tft.print("Press 1 to close");
+}
+
+// Function for sending notification if not sent already
+void sendNotification(char text[]){
+
+  if(notificationActive == false){
+    displayNotification(text);
+    notificationActive = true;
+    delay(500);
+  }
+}
+
+// Function for drawing corners
+void drawCorners(){
+  tft.drawBitmap(5,5,leftTopCorner,14,14,magentaColor);
+  tft.drawBitmap(141,5,rightTopCorner,14,14,magentaColor);
+  tft.drawBitmap(5,109,leftDownCorner,14,14,magentaColor);
+  tft.drawBitmap(141,109,rightDownCorner,14,14,magentaColor);
+}
 
 // Drawing main menu
 void drawMainMenu(bool muted, int currentScreen = 0){
@@ -558,66 +620,4 @@ void loop(){
       }
     }
   }
-}
-void sendNotification(char text[]){
-
-  if(notificationActive == false){
-    displayNotification(text);
-    notificationActive = true;
-    delay(500);
-  }
-}
-
-void displayNotification(char text[]){
-  // Max amount of character in one line is 22
-  tft.fillScreen(backgroundColor);
-  tft.drawRect(5, 5, 150, 118,magentaColor);
-
-  tft.setTextColor(yellowColor);
-  tft.setTextSize(1);
-
-  tft.setCursor(findCenter(7),10);
-  tft.print("Message");
-
-  tft.setTextWrap(false);
-
-  tft.setTextColor(whiteColor);
-  
-  if(strlen(text) > 22){
-    wrapText(text,13,30);
-  }
-  else{
-    tft.setCursor(13, 20);
-    tft.print(text);
-  }
-  
-
-  tft.setTextColor(yellowColor);
-  tft.setTextSize(1);
-  tft.setCursor(findCenter(16),103);
-  tft.print("Press 1 to close");
-}
-
-void wrapText(char text[],int x,int y){
-  tft.setCursor(x,y);
-
-  int j = 0;
-  String line = "";
-  for(int i = 0; i < strlen(text);i++){
-    if((i+1) % 22 != 0){
-      tft.print(text[i]);
-    }
-    else{
-      tft.println("");
-      tft.setCursor(x,tft.getCursorY()+2);
-      tft.print(text[i]);
-    }
-  }
-}
-
-void drawCorners(){
-  tft.drawBitmap(5,5,left_top_corner,14,14,magentaColor);
-  tft.drawBitmap(141,5,right_top_corner,14,14,magentaColor);
-  tft.drawBitmap(5,109,left_down_corner,14,14,magentaColor);
-  tft.drawBitmap(141,109,right_down_corner,14,14,magentaColor);
 }
