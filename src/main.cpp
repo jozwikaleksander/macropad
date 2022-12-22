@@ -192,7 +192,7 @@ void wrapText(char text[],int x,int y){
   tft.setCursor(x,y);
 
   String line = "";
-  for(int i = 0; i < strlen(text);i++){
+  for(unsigned int i = 0; i < strlen(text);i++){
     if((i+1) % 22 != 0){
       tft.print(text[i]);
     }
@@ -236,7 +236,7 @@ void displayNotification(char text[]){
 }
 
 // Function for sending notification if not sent already
-void sendNotification(char text[]){
+void sendNotification(char const text[]){
 
   if(notificationActive == false){
     displayNotification(text);
