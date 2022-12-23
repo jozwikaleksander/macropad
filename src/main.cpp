@@ -73,10 +73,10 @@ bool help = false;
 String shortcuts[4][2][8] = {
   {
     {"1 - mute / unmute","* - help menu","4 - next layout", "5 - previous layout", "A - Spotify","B - Terminal","C - Code","D - Discord"},
-    {"# - Monkeytype","7 - volume up","8 - volume down"}
+    {"# - Monkeytype","7 - volume up","8 - volume down","9 - play / pause"}
   },
   {
-    {"2 - text bold","A - # header","B - ## header", "C - ### header", "3 - export to HTML"}
+    {"2 - text bold","A - # header","B - ## header", "C - ### header", "D - #### header", "3 - export to HTML"}
   },
   {
     {"2 - sleep", "3 - shutdown"}
@@ -188,10 +188,9 @@ void drawIcon(int x, int y, bool muted = false){
 // ------------------------
 
 // Function for wrapping text
-void wrapText(char text[],int x,int y){
+void wrapText(const char text[],int x,int y){
   tft.setCursor(x,y);
 
-  String line = "";
   for(unsigned int i = 0; i < strlen(text);i++){
     if((i+1) % 22 != 0){
       tft.print(text[i]);
@@ -204,49 +203,10 @@ void wrapText(char text[],int x,int y){
   }
 }
 
-// Displaying notification
-void displayNotification(char text[]){
-  // Max amount of character in one line is 22
+// Function for drawing corners
+void drawBackground(){
   tft.fillScreen(backgroundColor);
   tft.drawRect(5, 5, 150, 118,magentaColor);
-
-  tft.setTextColor(yellowColor);
-  tft.setTextSize(1);
-
-  tft.setCursor(findCenter(7),10);
-  tft.print("Message");
-
-  tft.setTextWrap(false);
-
-  tft.setTextColor(whiteColor);
-  
-  if(strlen(text) > 22){
-    wrapText(text,13,30);
-  }
-  else{
-    tft.setCursor(13, 20);
-    tft.print(text);
-  }
-  
-
-  tft.setTextColor(yellowColor);
-  tft.setTextSize(1);
-  tft.setCursor(findCenter(16),103);
-  tft.print("Press 1 to close");
-}
-
-// Function for sending notification if not sent already
-void sendNotification(char const text[]){
-
-  if(notificationActive == false){
-    displayNotification(text);
-    notificationActive = true;
-    delay(500);
-  }
-}
-
-// Function for drawing corners
-void drawCorners(){
   tft.drawBitmap(5,5,leftTopCorner,14,14,magentaColor);
   tft.drawBitmap(141,5,rightTopCorner,14,14,magentaColor);
   tft.drawBitmap(5,109,leftDownCorner,14,14,magentaColor);
@@ -255,13 +215,10 @@ void drawCorners(){
 
 // Drawing main menu
 void drawMainMenu(bool muted, int currentScreen = 0){
-  tft.fillScreen(backgroundColor);
-  tft.drawRect(5, 5, 150, 118,magentaColor);
-
-  drawCorners();
+  drawBackground();
 
   if(currentScreen == 0){
-    // MUTED / UNMUTED PROMPT
+    // Muted / unmuted prompt
     if(muted){
       drawIcon(findCenter(1,10),30,true);
 
@@ -289,24 +246,24 @@ void drawMainMenu(bool muted, int currentScreen = 0){
       tft.print("Press 1 to mute");
     }
 
-    // HELP MENU
+    // Help menu
     tft.setTextColor(yellowColor);
     tft.setCursor(findCenter(16), 20);
     tft.print("Press * for help");
 
-    // LAYOUT NAME
+    // Layout name
     tft.setTextColor(blueColor);
     tft.setCursor(findCenter(layoutNames[layoutIndex].length()),100);
     tft.print((layoutNames[layoutIndex]).c_str());
   }
   else if(currentScreen == 1){
-    // HELP MENU TITLE
+    // Help menu title
     tft.setTextColor(yellowColor);
     tft.setTextSize(1);
     tft.setCursor(findCenter((layoutNames[layoutIndex]).length()),10);
     tft.print((layoutNames[layoutIndex]).c_str());
 
-    // HELP MENU ELEMENTS
+    // Help menu entries
     tft.setTextColor(whiteColor);
     tft.setTextSize(1);
 
@@ -314,7 +271,7 @@ void drawMainMenu(bool muted, int currentScreen = 0){
 
     for(int i = 0; i < 8; i++){
 
-      tft.setCursor(10,30 + (i*10)+offset);
+      tft.setCursor(13,30 + (i*10)+offset);
 
       char shortcut[shortcuts[layoutIndex][currentHelpIndex][i].length() + 1];
       strcpy(shortcut, shortcuts[layoutIndex][currentHelpIndex][i].c_str());
@@ -329,7 +286,7 @@ void drawMainMenu(bool muted, int currentScreen = 0){
       }
     }
 
-    // PAGE NUMBER
+    // Page number
     tft.setTextColor(blueColor);
     tft.setCursor(findCenter(11),110);
     tft.print(("Page "+String(currentHelpIndex+1)+" of 2").c_str());
@@ -356,7 +313,7 @@ void drawMainMenu(bool muted, int currentScreen = 0){
 
     tft.fillRect(findCenter(1,100)+3,78,int((float(minutes)/float(currentSessionTime))*94.0),9,yellowColor);
 
-    // LAYOUT NAME
+    // Layout name
     tft.setTextColor(blueColor);
     tft.setTextSize(1);
     tft.setCursor(findCenter(layoutNames[layoutIndex].length()),100);
@@ -377,15 +334,81 @@ void launchFromStartMenu(String program){
   Keyboard.releaseAll();
 }
 
+// Displaying notification
+void displayNotification(const char text[]){
+  // Max amount of character in one line is 22
+  drawBackground();
+
+  tft.setTextColor(yellowColor);
+  tft.setTextSize(1);
+
+  tft.setCursor(findCenter(7),10);
+  tft.print("Message");
+
+  tft.setTextWrap(false);
+
+  tft.setTextColor(whiteColor);
+  
+  if(strlen(text) > 22){
+    wrapText(text,13,30);
+  }
+  else{
+    tft.setCursor(13, 20);
+    tft.print(text);
+  }
+
+  tft.setTextColor(yellowColor);
+  tft.setTextSize(1);
+  tft.setCursor(findCenter(16),103);
+  tft.print("Press 1 to close");
+}
+
+// Function for sending notification if not sent already
+void sendNotification(char const text[]){
+
+  if(notificationActive == false){
+    displayNotification(text);
+    notificationActive = true;
+    delay(500);
+  }
+}
+
+// Pomodro timer funciton
+void pomodoroTimer() {
+  seconds = int((millis() - startMillis) / 1000.0);
+
+  if(seconds % 60 == 0 && seconds > 0){
+    minutes++;
+    if(minutes >= currentSessionTime){
+      if(currentSessionTime == lessonTime){
+        currentSessionTime = breakTime;
+      }
+      else{
+        currentSessionTime = lessonTime;
+      }
+      timerStarted = false;
+      minutes = 0;
+
+      sendNotification("Times up!");
+    }
+    else{
+      startMillis = millis();
+      seconds = 0;
+      screenUpdated=false;
+    }
+  }
+}
+
 void setup(){
   Serial.begin(9600);
   Keyboard.begin();
+  Consumer.begin();
+
   tft.initR(INITR_GREENTAB);
   tft.setRotation(1);
-  tft.fillScreen(ST7735_BLACK);
   tft.setTextWrap(false);
 
-  Consumer.begin();
+  drawBackground();
 }
   
 void loop(){
@@ -473,7 +496,7 @@ void loop(){
     }
     // ----------------------
 
-    // NOT LAYOUT DEPENDENT KEYBINDINGS 
+    // LAYOUT INDEPENDENT KEY BINDINGS 
     if (customKey == '1' && layoutIndex != 3){ // Muting
         muted = !muted;
         screenUpdated = false;
@@ -487,7 +510,7 @@ void loop(){
 
     // ----------------------
 
-    // Layouts
+    // LAYOUTS
 
     // GENERAL MODE
     if(layoutIndex == 0){
@@ -532,6 +555,9 @@ void loop(){
       }
       else if(customKey == 'C'){
         Keyboard.print("### ");
+      }
+      else if(customKey == 'D'){
+        Keyboard.print("#### ");
       }
       else if(customKey == '3'){
         Keyboard.press(KEY_LEFT_CTRL);
@@ -595,29 +621,9 @@ void loop(){
       screenUpdated=false;
       delay(100);
   }
-  // Pomodoro timer
+
+  // If timer is started run pomodoroTimer() function
   if(timerStarted){
-    seconds = int((millis() - startMillis) / 1000.0);
-
-    if(seconds % 60 == 0 && seconds > 0){
-      minutes++;
-      if(minutes >= currentSessionTime){
-        if(currentSessionTime == lessonTime){
-          currentSessionTime = breakTime;
-        }
-        else{
-          currentSessionTime = lessonTime;
-        }
-        timerStarted = false;
-        minutes = 0;
-
-        sendNotification("Times up!");
-      }
-      else{
-        startMillis = millis();
-        seconds = 0;
-        screenUpdated=false;
-      }
-    }
+    pomodoroTimer();
   }
 }
