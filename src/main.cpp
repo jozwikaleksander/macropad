@@ -8,6 +8,8 @@
 #include <Keypad.h>
 #include "HID-Project.h"
 
+#include <config.h>
+
 #define cs   2
 #define dc   0
 #define rst  1
@@ -403,6 +405,7 @@ void setup(){
   Serial.begin(9600);
   Keyboard.begin();
   Consumer.begin();
+  System.begin();
 
   tft.initR(INITR_GREENTAB);
   tft.setRotation(1);
@@ -578,17 +581,23 @@ void loop(){
     }
     else if(layoutIndex == 2){
       if(customKey == '2'){
-        Keyboard.press(KEY_LEFT_CTRL);
-        Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('.');
+        Keyboard.press(KEY_LEFT_GUI);
+        Keyboard.write('r');
         delay(10);
+        Keyboard.releaseAll();
+        delay(100);
+        Keyboard.println(sleep_script);
+        delay(100);
         Keyboard.releaseAll();
       }
       else if(customKey == '3'){
-        Keyboard.press(KEY_LEFT_CTRL);
-        Keyboard.press(KEY_LEFT_SHIFT);
-        Keyboard.write('/');
+        Keyboard.press(KEY_LEFT_GUI);
+        Keyboard.write('r');
         delay(10);
+        Keyboard.releaseAll();
+        delay(100);
+        Keyboard.println(shutdown_script);
+        delay(100);
         Keyboard.releaseAll();
       }
     }
